@@ -2,26 +2,22 @@ package file;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
 import java.nio.file.Path;
-import java.security.KeyStore;
 import java.text.Normalizer;
 import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.List;
 
 import javax.xml.crypto.dsig.Transform;
-import javax.xml.crypto.dsig.XMLObject;
 import javax.xml.crypto.dsig.XMLSignatureFactory;
 import javax.xml.crypto.dsig.spec.TransformParameterSpec;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.TransformerFactory;
 
 import org.w3c.dom.Document;
-
+import org.w3c.dom.NodeList;
 
 public class ArqXML{
 	
@@ -77,14 +73,15 @@ public class ArqXML{
 
 	public Document getDocument(){
 		
-		Document document;
+		Document document = null;
+		ArrayList<Transform> transformList = null;
         try {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             factory.setNamespaceAware(true);
             document = factory.newDocumentBuilder().parse(new ByteArrayInputStream(this.getContent().getBytes("UTF-8")));
             
             XMLSignatureFactory signatureFactory = XMLSignatureFactory.getInstance("DOM");
-            ArrayList<Transform> transformList;
+           
             
             /*
              * Signature Factory
@@ -101,13 +98,47 @@ public class ArqXML{
             NodeList tagSignature = document.getDocumentElement().getElementsByTagName("Signature");
             
             if(tagSignature.getLength() > 0)
-                return true;
+                return document;
             else
-                return false;
+                return null;
         } catch (Exception e) {
             e.printStackTrace();
-            return true;
+            return null;
         }   
+		
+	}
+	
+	public boolean hasSignature(){
+		
+		NodeList tagSignature = this.getDocument().getDocumentElement().getElementsByTagName("Signature");
+        
+        if(tagSignature.getLength() > 0)
+            return true;
+        else
+            return false;
+	}
+	
+	@Override
+	public String toString(){
+		
+		
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+        TransformerFactory tf = TransformerFactory.newInstance();
+        
+        String xml = null;
+        try{
+        	javax.xml.transform.Transformer trans = tf.newTransformer();
+        	trans.transform(new javax.xml.transform.dom.DOMSource(this.getDocument()), new javax.xml.transform.stream.StreamResult(os));
+	        xml = os.toString();
+	        if ((xml != null) && (!"".equals(xml))) {
+	            xml = xml.replaceAll("\\r\\n", "");
+	            xml = xml.replaceAll(" standalone=\"no\"", "");
+	        }
+        }catch(Exception e){
+        	e.printStackTrace();        	
+        }
+        
+        return xml;
 		
 	}
 	
