@@ -3,18 +3,13 @@ package file;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
-import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
-
 import javax.xml.crypto.dsig.Transform;
 import javax.xml.crypto.dsig.XMLSignatureFactory;
 import javax.xml.crypto.dsig.keyinfo.KeyInfo;
