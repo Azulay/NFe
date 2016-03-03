@@ -4,13 +4,11 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
 import java.security.UnrecoverableEntryException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
@@ -19,7 +17,6 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
 
-import javax.sound.midi.SysexMessage;
 import javax.xml.crypto.MarshalException;
 import javax.xml.crypto.dsig.CanonicalizationMethod;
 import javax.xml.crypto.dsig.DigestMethod;
@@ -45,12 +42,9 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
 import org.w3c.dom.Document;
-import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
-import file.ArqCert;
-import file.ArqXML;
 import file.Certificado;
 import file.NFe;
 
@@ -59,15 +53,10 @@ public class Assinador {
 	
 	private NFe nfe;
 	
-	
-	
-	public boolean assina(NFe nfe){
+		
+	public boolean assina(NFe nfe, Certificado certificadoCliente){
 		
 		this.nfe = nfe;
-		
-		Certificado certificadoCliente = new Certificado();
-		certificadoCliente.setPath("D:\\java\\bssv\\cert\\lca_alim.pfx");
-		certificadoCliente.setPassword("LCA889412");
 		
 		//Certificado certificadoCacerts = new Certificado();
 		
@@ -81,9 +70,37 @@ public class Assinador {
         SignedInfo si = null;
         KeyStore.PrivateKeyEntry keyEntry = null;
         KeyInfo ki = null;
-        try {
+        
+        
+        
+        
+     // Instantiate the document to be signed.
+        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+        dbf.setNamespaceAware(true);
+        Document doc = null;
+		try {
+			doc = dbf.newDocumentBuilder().parse
+			    (new FileInputStream(nfe.getPath()));
+		} catch (SAXException | IOException | ParserConfigurationException e) {
+			e.printStackTrace();
+		}
+
+        
+        
+        int qtdNF = doc.getDocumentElement().getElementsByTagName("NFe").getLength();
+        for (int i = 0 ; i < qtdNF ;  i++) {
+               //assinarNFe(signatureFactory, transformList, privateKey, keyInfo,document, i);
+        	
+        	NodeList elements = doc.getElementsByTagName("infNFe");
+            org.w3c.dom.Element el = (org.w3c.dom.Element)elements.item(i);
+
+            String id = el.getAttribute("Id");
+            el.setIdAttribute("Id", true);
+        	
+            
+            try {
 				ref = fac.newReference
-					 ("", fac.newDigestMethod(DigestMethod.SHA1, null),
+					 ("#"+id	, fac.newDigestMethod(DigestMethod.SHA1, null),
 					  Collections.singletonList
 					   (fac.newTransform
 					    (Transform.ENVELOPED, (TransformParameterSpec) null)),
@@ -123,67 +140,44 @@ public class Assinador {
 				x509Content.add(cert);
 				X509Data xd = kif.newX509Data(x509Content);
 				ki = kif.newKeyInfo(Collections.singletonList(xd));
+				
+				// Create a DOMSignContext and specify the RSA PrivateKey and
+		        // location of the resulting XMLSignature's parent element.
+		        DOMSignContext dsc = new DOMSignContext
+		            (keyEntry.getPrivateKey(), doc.getDocumentElement().getElementsByTagName("NFe").item(i));
 
-		} catch (NoSuchAlgorithmException | InvalidAlgorithmParameterException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (CertificateException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (KeyStoreException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (UnrecoverableEntryException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-        
-        
-        
-     // Instantiate the document to be signed.
-        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-        dbf.setNamespaceAware(true);
-        Document doc = null;
-		try {
-			doc = dbf.newDocumentBuilder().parse
-			    (new FileInputStream(nfe.getPath()));
-		} catch (SAXException | IOException | ParserConfigurationException e) {
-			e.printStackTrace();
-		}
+		        // Create the XMLSignature, but don't sign it yet.
+		        XMLSignature signature = fac.newXMLSignature(si, ki);
 
-        // Create a DOMSignContext and specify the RSA PrivateKey and
-        // location of the resulting XMLSignature's parent element.
-        DOMSignContext dsc = new DOMSignContext
-            (keyEntry.getPrivateKey(), doc.getDocumentElement());
+		        // Marshal, generate, and sign the enveloped signature.
+		        signature.sign(dsc);
+		        
 
-        // Create the XMLSignature, but don't sign it yet.
-        XMLSignature signature = fac.newXMLSignature(si, ki);
-
-        // Marshal, generate, and sign the enveloped signature.
-        try {
-			signature.sign(dsc);
-		} catch (MarshalException e) {
-			e.printStackTrace();
-		} catch (XMLSignatureException e) {
-			e.printStackTrace();
-		}
-        
+			} catch (NoSuchAlgorithmException | 
+					InvalidAlgorithmParameterException | 
+					CertificateException |
+					IOException |
+					KeyStoreException |
+					UnrecoverableEntryException|
+					MarshalException |
+					XMLSignatureException e) {
+				e.printStackTrace();
+			}
+            
+            
+        	
+        }
         
      // Output the resulting document.
         OutputStream os;
 		try {
-			os = new FileOutputStream("result.xml");
+			//os = new FileOutputStream("result.xml");
+			os = new FileOutputStream("D:\\dev\\resources\\xml\\NFE_LCA_001.xml");
 			TransformerFactory tf = TransformerFactory.newInstance();
 		    Transformer trans = tf.newTransformer();
 		    trans.transform(new DOMSource(doc), new StreamResult(os));
 		    
-		    System.out.println(doc.getTextContent());
+		    
 		    
 		    nfe.setContent(doc.getTextContent());
 		    
